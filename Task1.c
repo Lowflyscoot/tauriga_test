@@ -1,3 +1,5 @@
+#include <stdio.h>
+
 typedef struct list_s
 {
         struct list_s *next; /* NULL for the last item in a list */
@@ -39,6 +41,10 @@ int get_item_by_index(const list_t *head, const int index) {
 	 */
 void insert_next_to_list(list_t *item, int data) {
     // memory for next element of list
+	// if (item->next)
+	// {
+
+	// }
     list_t *old_next_element = item->next;
     item->next = malloc(sizeof(list_t));
     item->next->next = old_next_element;
@@ -59,8 +65,23 @@ void remove_next_from_list(list_t *item) {
 	 */
 char *item_data(const list_t *list)
 {
-	char *buf = malloc(count_list_items(list));
-
+	int num_els = count_list_items(list);
+	char *buf = malloc(num_els);
+	char buf2[20] = {};
 	sprintf(buf, "%d", list->data);
+	memcpy(buf2, buf, 20);
 	return buf;
+}
+
+
+
+int main (void)
+{
+    list_t new_list;
+    new_list.data = 10;
+	new_list.next = NULL;
+	insert_next_to_list(&new_list, 20);
+	insert_next_to_list(&new_list, 11);
+	insert_next_to_list(&new_list, 12);
+	printf("%s", count_list_items(&new_list), *item_data(&new_list));
 }

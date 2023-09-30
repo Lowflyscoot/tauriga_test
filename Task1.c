@@ -68,7 +68,7 @@ list_t *add_to_list_end(list_t *item, int data) {
     current_element->next = malloc(sizeof(list_t));
     current_element->next->data = data;
     current_element->next->next = NULL;
-    return current_element;
+    return current_element->next;
 }
 
     /* Removes an item following the one specificed as the argument.

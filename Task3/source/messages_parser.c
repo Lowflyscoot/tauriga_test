@@ -2,9 +2,8 @@
 #include <stdio.h>
 #include <string.h>
 #include <stdint.h>
-#include "crc32.h"
-#include "singly_linked_list.h"
-#include "dynamic_array.h"
+#include "head/crc32.h"
+#include "head/dynamic_array.h"
 
 #define MIN(x,y) (x < y ? x:y)
 #define MAX(x,y) (x > y ? x:y)

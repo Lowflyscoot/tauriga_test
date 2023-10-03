@@ -219,31 +219,6 @@ void print_message_to_file (message_t *old_message, message_t *new_message, FILE
     fprintf(target_file, "0x%08x\n\n", new_message->crc32);
 }
 
-void print_errors (d_array_t *array_errors, FILE *target_file)
-{
-    for (int i = 0; i < array_errors->used_memory; i++)
-    reset_pointer(array_errors);
-    switch (get_array_element_with_shift(array_errors, array_errors))
-    {
-        case INCORRECT_LENGTH:
-            fprintf(target_file, "\n<ERROR: Incorrect length of input>\n");
-            break;
-        case INCORRECT_INPUT:
-            fprintf(target_file, "\n<ERROR: Incorrect input>\n");
-            break;
-        case MEMORY_ALLOCATION_ERROR:
-            fprintf(target_file, "\n<ERROR: Failed to allocate memory>\n");
-            break;
-        case OUT_OF_MEMORY:
-            fprintf(target_file, "\n<ERROR: Trying work with elements in out of allocated memory>\n");
-            break;
-        default:
-            break;
-    }
-}
-
-
-
 int main (void)
 {
     // Opening of file to read
@@ -279,6 +254,13 @@ int main (void)
     // Structures for storaging the next message in initial and modified version
     message_t *old_mess = NULL;
     message_t *new_mess = NULL;
+
+    if (pair_number == 0)
+    {
+        add_element(error_array, INCORRECT_INPUT, error_array);
+    }
+    
+
     // Movement for each pair of message and mask
     for (int i = 0; i < pair_number; i++)
     {

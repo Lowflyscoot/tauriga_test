@@ -1,12 +1,21 @@
 #include "dynamic_array.h"
 
+#include <stdio.h>
+#include <string.h>
+#include <stdlib.h>
+#include <stdint.h>
+#include "error_operations.h"
+
+d_array_t *check_length (d_array_t *item, d_array_t *error_array);
+
 // Checking violation of borders of a dynamic array
-d_array_t *check_length (d_array_t *item)
+d_array_t *check_length (d_array_t *item, d_array_t *error_array)
 {
     // Trying to get element out of borders of array
     if (item->array_pointer > (item->array + item->size))
     {
         reset_pointer(item);
+        add_element(error_array, OUT_OF_MEMORY, error_array);
     }
     // Allocated memory is end, need to allocate new memory field with more size
     if (item->used_memory >= item->size)
@@ -46,10 +55,10 @@ d_array_t *init_array (size_t size)
 }
 
 // Safe adding element to dynamic array
-void add_element (d_array_t *array, uint8_t byte)
+void add_element (d_array_t *array, uint8_t byte, d_array_t *error_array)
 {
     // Check problems
-    array = check_length(array);
+    array = check_length(array, error_array);
     // Add new element to the end of array
     *array->array_pointer = byte;
     array->array_pointer++;
@@ -63,17 +72,17 @@ void reset_pointer(d_array_t *array)
 }
 
 // Set arbitary position of floating pointer
-void set_pointer_by_position(d_array_t *array, size_t position)
+void set_pointer_by_position(d_array_t *array, size_t position, d_array_t *error_array)
 {
     array->array_pointer = array->array + position;
-    array = check_length(array);
+    array = check_length(array, error_array);
 }
 
 // Get nest element and shift pointer to next
-uint8_t get_array_element_with_shift(d_array_t *array)
+uint8_t get_array_element_with_shift(d_array_t *array, d_array_t *error_array)
 {
     uint8_t result = *array->array_pointer++;
-    array = check_length(array);
+    array = check_length(array, error_array);
     return result;
 }
 

@@ -4,28 +4,15 @@
 #include <stdint.h>
 #include "crc32.h"
 #include "dynamic_array.h"
+#include "error_operations.h"
+#include "messages_parser.h"
 
 #define MIN(x,y) (x < y ? x:y)
 #define MAX(x,y) (x > y ? x:y)
 
-typedef struct {
-    uint8_t type;
-    size_t length;
-    size_t final_length;
-    uint8_t* data;
-    uint32_t crc32;
-} message_t;
-
-
-uint32_t mask_parsing (d_array_t *item, size_t position);
-uint8_t pack_byte (d_array_t *item);
-message_t *message_parsing (d_array_t *item, size_t position);
-uint32_t mask_parsing (d_array_t *item, size_t position);
-uint32_t mask_parsing (d_array_t *item, size_t position);
-
 
 // Convert symbol from input to uint-number
-uint8_t ascii_to_half_byte(const uint8_t symbol_code)
+uint8_t ascii_to_half_byte(const uint8_t symbol_code, d_array_t *error_array)
 {
     if (symbol_code >= 0x41 && symbol_code <= 0x46)
     {
@@ -35,32 +22,44 @@ uint8_t ascii_to_half_byte(const uint8_t symbol_code)
     {
         return (symbol_code - 0x30);
     }
+    add_element(error_array, INCORRECT_INPUT, error_array);
     return 0;
 }
 
 
 // Packing two following symbols to one byte
-uint8_t pack_byte (d_array_t *item)
+uint8_t pack_byte (d_array_t *item, d_array_t *error_array)
 {
     uint8_t result_byte = 0;
-    result_byte = ascii_to_half_byte(get_array_element_with_shift(item)) << 4;
-    result_byte |= ascii_to_half_byte(get_array_element_with_shift(item));
+    result_byte = ascii_to_half_byte(get_array_element_with_shift(item, error_array), error_array) << 4;
+    result_byte |= ascii_to_half_byte(get_array_element_with_shift(item, error_array), error_array);
     return result_byte;
 }
 
 
 // Parsing of input array to message struct
-message_t *message_parsing (d_array_t *item, size_t position)
+message_t *message_parsing (d_array_t *item, size_t position, d_array_t *error_array)
 {
     message_t *current_message = malloc(sizeof(message_t));
 
+    if (!item) 
+    {
+        add_element(error_array, INCORRECT_INPUT, error_array);
+        return NULL;
+    }
+    if (!current_message) 
+    {
+        add_element(error_array, MEMORY_ALLOCATION_ERROR, error_array);
+        return NULL;
+    }
+
     // Set position of next element
-    set_pointer_by_position(item, position);
+    set_pointer_by_position(item, position, error_array);
 
     // Get the type
-    current_message->type = pack_byte(item);
+    current_message->type = pack_byte(item, error_array);
     // Get the length
-    current_message->length = pack_byte(item);
+    current_message->length = pack_byte(item, error_array);
 
     // Count length, myltiplyed by 4
     current_message->final_length = current_message->length;
@@ -71,6 +70,13 @@ message_t *message_parsing (d_array_t *item, size_t position)
 
     // Allocation memory for message and creating floating pointer data_pointer to movement of data bytes
     uint32_t *data_pointer = malloc(sizeof(int*) * current_message->length);
+
+    if (!data_pointer) 
+    {
+        add_element(error_array, MEMORY_ALLOCATION_ERROR, error_array);
+        return NULL;
+    }
+
     uint32_t *data_start = data_pointer;
     
     // Getting data from array
@@ -80,7 +86,7 @@ message_t *message_parsing (d_array_t *item, size_t position)
         for (int j = 0; j < 4; j++)
         {
             if (((i * 4) + j) >= current_message->length) break;
-            *data_pointer |= (uint32_t)pack_byte(item) << (24 - j * 8);
+            *data_pointer |= (uint32_t)pack_byte(item, error_array) << (24 - j * 8);
         }
         data_pointer++;
     }
@@ -92,7 +98,7 @@ message_t *message_parsing (d_array_t *item, size_t position)
     current_message->crc32 = 0;
     for (int i = 0; i < 4; i++)
     {
-        current_message->crc32 |= (pack_byte(item) << (24 - i * 8));
+        current_message->crc32 |= (pack_byte(item, error_array) << (24 - i * 8));
     }
 
     return current_message;
@@ -100,10 +106,10 @@ message_t *message_parsing (d_array_t *item, size_t position)
 
 
 // Parsing of mask and saving it to uint32
-uint32_t mask_parsing (d_array_t *item, size_t position)
+uint32_t mask_parsing (d_array_t *item, size_t position, d_array_t *error_array)
 {
     // Floating pointer to position in array
-    set_pointer_by_position(item, position);
+    set_pointer_by_position(item, position, error_array);
 
     uint32_t result_mask = 0;
     uint8_t byte = 0;
@@ -111,7 +117,7 @@ uint32_t mask_parsing (d_array_t *item, size_t position)
     // Saving mask
     for (int i = 0; i < 4; i++)
     {
-        byte = pack_byte(item);
+        byte = pack_byte(item, error_array);
         result_mask |= (byte << (24 - i * 8));
     }
 
@@ -213,6 +219,29 @@ void print_message_to_file (message_t *old_message, message_t *new_message, FILE
     fprintf(target_file, "0x%08x\n\n", new_message->crc32);
 }
 
+void print_errors (d_array_t *array_errors, FILE *target_file)
+{
+    for (int i = 0; i < array_errors->used_memory; i++)
+    reset_pointer(array_errors);
+    switch (get_array_element_with_shift(array_errors, array_errors))
+    {
+        case INCORRECT_LENGTH:
+            fprintf(target_file, "\n<ERROR: Incorrect length of input>\n");
+            break;
+        case INCORRECT_INPUT:
+            fprintf(target_file, "\n<ERROR: Incorrect input>\n");
+            break;
+        case MEMORY_ALLOCATION_ERROR:
+            fprintf(target_file, "\n<ERROR: Failed to allocate memory>\n");
+            break;
+        case OUT_OF_MEMORY:
+            fprintf(target_file, "\n<ERROR: Trying work with elements in out of allocated memory>\n");
+            break;
+        default:
+            break;
+    }
+}
+
 
 
 int main (void)
@@ -229,9 +258,12 @@ int main (void)
     
     // Packing all input to a dynamic array
     d_array_t *d_array_input = init_array(10);
+    d_array_t *error_array = init_array(10);
+
+
     do {
         symbol = fgetc(input_file);
-        add_element(d_array_input, symbol);
+        add_element(d_array_input, symbol, error_array);
     } while (symbol != EOF);
     
     // The number of pairs is equal to the minimum number of messages and masks.
@@ -253,11 +285,11 @@ int main (void)
         // Find out the position of the next message
         array_mess_position = get_anchor_position(d_array_input, "mess=", array_mess_position);
         // For the each anchor "mess=" performing parsing
-        old_mess = message_parsing(d_array_input, array_mess_position);
+        old_mess = message_parsing(d_array_input, array_mess_position, error_array);
         // Find out the position of the next mask
         array_mask_position = get_anchor_position(d_array_input, "mask=", array_mask_position);
         // For the each anchor "mask=" performing parsing
-        mask = mask_parsing(d_array_input, array_mask_position);
+        mask = mask_parsing(d_array_input, array_mask_position, error_array);
         // Overlaying mask to message data and recalculation of a CRC-32
         new_mess = mask_overlay(old_mess, mask);
         // Output to the file
@@ -268,6 +300,8 @@ int main (void)
         free(new_mess->data);
         free(new_mess);
     }
+
+    print_errors(error_array, output_file);
 
     // Freeing of memory
     free(d_array_input);

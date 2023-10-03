@@ -42,6 +42,7 @@ d_array_t *init_array (size_t size)
     dynamic_array->array_pointer = dynamic_array->array;
     dynamic_array->size = size;
     dynamic_array->used_memory = 0;
+    return dynamic_array;
 }
 
 // Safe adding element to dynamic array

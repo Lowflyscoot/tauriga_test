@@ -2,8 +2,8 @@
 #include <stdio.h>
 #include <string.h>
 #include <stdint.h>
-#include "head/crc32.h"
-#include "head/dynamic_array.h"
+#include "crc32.h"
+#include "dynamic_array.h"
 
 #define MIN(x,y) (x < y ? x:y)
 #define MAX(x,y) (x > y ? x:y)
@@ -35,6 +35,7 @@ uint8_t ascii_to_half_byte(const uint8_t symbol_code)
     {
         return (symbol_code - 0x30);
     }
+    return 0;
 }
 
 
@@ -71,7 +72,6 @@ message_t *message_parsing (d_array_t *item, size_t position)
     // Allocation memory for message and creating floating pointer data_pointer to movement of data bytes
     uint32_t *data_pointer = malloc(sizeof(int*) * current_message->length);
     uint32_t *data_start = data_pointer;
-    uint32_t tmp;
     
     // Getting data from array
     for (int i = 0; i < (current_message->final_length / 4); i++)
@@ -136,10 +136,8 @@ message_t *mask_overlay (message_t *recieved_message, uint32_t mask)
     new_message->data = malloc(sizeof(uint32_t) * recieved_message->final_length);
 
     // Overlaying mask to all data fields
-    uint32_t temp;
     for (int i = 0; i < (recieved_message->final_length); i++)
     {
-        temp = *process_data_pointer & mask;
         *process_data_pointer = *process_data_pointer & mask;
         process_data_pointer++;
     }
@@ -174,7 +172,7 @@ void print_message_to_file (message_t *old_message, message_t *new_message, FILE
     uint32_t *data_pointer = NULL;
     
     fprintf(target_file, "Message type: %d\n", old_message->type);
-    fprintf(target_file, "Initial message length: %d\n", old_message->length);
+    fprintf(target_file, "Initial message length: %d\n", (uint32_t)old_message->length);
     fprintf(target_file, "Initial message data bytes: ");
 
     // Print tetrads of initial messate
@@ -201,7 +199,7 @@ void print_message_to_file (message_t *old_message, message_t *new_message, FILE
     fprintf(target_file, "\nInitial CRC-32: ");
     fprintf(target_file, "0x%08x\n", old_message->crc32);
 
-    fprintf(target_file, "Modified message length: %d\n", new_message->final_length);
+    fprintf(target_file, "Modified message length: %d\n", (uint32_t)new_message->final_length);
     fprintf(target_file, "Modified message data bytes with mask: ");
 
     data_pointer = (uint32_t*)new_message->data;
@@ -221,10 +219,10 @@ int main (void)
 {
     // Opening of file to read
     FILE *input_file;
-    input_file = fopen("input.txt", "r");
+    fopen_s(&input_file, "input.txt", "r");
     // Opening of file to write
     FILE *output_file;
-    output_file = fopen("output.txt", "a");
+    fopen_s(&output_file, "output.txt", "a");
 
     // Storage of each symbol from an input
     char symbol;

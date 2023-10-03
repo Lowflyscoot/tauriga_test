@@ -59,7 +59,7 @@ void remove_next_from_list(list_t *item) {
 	 */
 char *item_data(const list_t *list)
 {
-	char *buf = malloc(count_list_items(list));
+	char buf[20];
 
 	sprintf(buf, "%d", list->data);
 	return buf;
